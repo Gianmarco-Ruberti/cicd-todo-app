@@ -1,0 +1,161 @@
+[
+  {
+    "title": "Planification et suivi KanBan sur GitHub Project",
+    "labels": [
+      "gestion de projet",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLe cahier des charges impose une planification et un suivi de projet de type **KanBan** réalisés sur **GitHub Project** (CdC §7.1.1 et livrable CdC §7.4.2).\nC'est le tableau de bord qui rend l'avancement observable pour le client.\n\n## Tâches\n- [x] Créer un GitHub Project (template KanBan) et le lier au dépôt `cicd-todo-app`\n- [x] Définir les colonnes : Backlog / À faire / En cours / En revue / Terminé\n- [x] Y ajouter toutes les issues du dépôt\n- [x] Renseigner les champs Priorité et Estimation\n\n## Critères d'acceptation\n- [ ] Le board est accessible aux enseignants\n- [ ] Chaque issue ouverte figure dans le board\n- [ ] L'état de chaque tâche est à jour à la fin de chaque séance\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.1.1, CdC §7.4.2\n"
+  },
+  {
+    "title": "Journal de travail individuel",
+    "labels": [
+      "gestion de projet",
+      "livrable",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nUn journal de travail individuel est exigé (CdC §7.1.2) et fait partie des livrables (CdC §7.4.4).\n\n## Tâches\n- [ ] Tenir le journal au quotidien (une entrée par séance minimum)\n- [ ] Y référencer les sources, fichiers, répertoires et commits concernés\n- [ ] Indiquer l'état et la durée des tâches\n- [ ] Mentionner les activités planifiées, l'aide extérieure reçue et les imprévus / heures supplémentaires\n- [ ] Mentionner les succès et les échecs\n- [ ] Ajouter le travail journalier, une appréciation critique et une réflexion personnelle\n- [ ] Soigner la structure et la présentation\n\n## Critères d'acceptation\n- [ ] Le journal est à jour (pas de rattrapage massif en fin de projet)\n- [ ] Chaque commit significatif est référencé\n- [ ] Le journal est rendu au format demandé par l'enseignant\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.1.2, CdC §7.4.4\n"
+  },
+  {
+    "title": "Structure du dépôt et .gitignore conformes",
+    "labels": [
+      "qualité",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLe CdC impose une structure de dépôt précise (CdC §7.2.2) :\n\n```\ncicd-todo-app/\n├── backend/          # Code serveur (API)\n├── frontend/         # Interface utilisateur (Vue.js)\n├── docs/             # Documentation technique et fonctionnelle (Markdown)\n├── .gitignore\n├── docker-compose.yml\n└── README.md\n```\n\n## Constats actuels (vérifiés dans le dépôt)\n- ❌ pas de `.gitignore` **à la racine** (il en existe un dans `backend/` et un dans `frontend/`, à fusionner ou compléter)\n- ❌ le dossier de documentation s'appelle `DOC/` au lieu de `docs/` (il contient le PDF du CdC)\n- ❌ le fichier compose s'appelle `docker-compose.yaml` alors que le CdC mentionne `docker-compose.yml`\n- ❌ le dépôt est **public** alors que le CdC exige un dépôt **privé** partagé avec les enseignants\n- ⚠️ les scripts `lint` utilisent `--ignore-pattern .gitignore` (l'option attendue est `--ignore-path`)\n\n## Tâches\n- [ ] Créer un `.gitignore` racine couvrant `node_modules/`, `dist/`, `.env*`, `coverage/`, `*.log`, `.DS_Store`, `.idea/`, `.vscode/`, `cypress/screenshots`, `cypress/videos`\n- [ ] Vérifier le contenu des `.gitignore` de `backend/` et `frontend/` (doublons / oublis)\n- [ ] Retirer du suivi Git les fichiers qui devraient être ignorés (`git rm -r --cached ...`)\n- [ ] Renommer `DOC/` en `docs/` et y ajouter la documentation Markdown\n- [ ] Aligner le nom du fichier compose sur `docker-compose.yml` (ou documenter l'écart)\n- [ ] Vérifier qu'aucun secret (`.env`, clés, tokens, mot de passe de test) n'est versionné\n- [ ] Rendre le dépôt privé et le partager avec les enseignants\n- [ ] Compléter le `README.md` racine : buts, technologies, prérequis, lancement\n\n## Critères d'acceptation\n- [ ] L'arborescence correspond au CdC\n- [ ] `git status` reste propre après installation des dépendances, build et tests\n- [ ] Le dépôt est privé avec les accès enseignants configurés\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` §7.2.2\n"
+  },
+  {
+    "title": "Fonctionnalités de l'application Todo (Vue/Tailwind + Express + MySQL)",
+    "labels": [
+      "application",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nL'application doit fonctionner avec un frontend **Vue.js / TailwindCSS responsive** et un backend **Node.js / Express** exposant une API REST, avec persistance **MySQL** (CdC §7.3).\n\n## Tâches\n- [ ] API REST backend : création, lecture, mise à jour et suppression des tâches\n- [ ] Validation des entrées et gestion centralisée des erreurs\n- [ ] Connexion MySQL (pool, migrations ou script d'initialisation, variables d'environnement)\n- [ ] Frontend Vue 3 + TailwindCSS : liste, ajout, édition, complétion et suppression\n- [ ] Mise en page **responsive** (mobile / tablette / desktop)\n- [ ] États de chargement et messages d'erreur explicites\n- [ ] Configuration des URL d'API par variable d'environnement (dev / test / prod)\n- [ ] `docker-compose.yml` lançant l'ensemble (frontend, backend, MySQL) en local\n\n## Critères d'acceptation\n- [ ] Un utilisateur peut gérer ses tâches de bout en bout depuis le navigateur\n- [ ] Les données persistent après redémarrage des conteneurs\n- [ ] L'interface reste utilisable en 375 px et en 1920 px de large\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3\n"
+  },
+  {
+    "title": "Workflow de test + déploiement automatique sur l'environnement de test",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLe déploiement sur l'infrastructure de **test** doit se déclencher à chaque `push` sur la branche principale `main` (CdC §7.3.1.a).\n\n## Tâches\n- [ ] Créer `.github/workflows/` avec un workflow de CI exécuté sur `push: branches: [main]`\n- [ ] Enchaîner audit → lint → tests → build → déploiement test\n- [ ] Bloquer le déploiement si une étape précédente échoue (`needs`)\n- [ ] Stocker les accès serveur dans les secrets du dépôt (`SSH_HOST_TEST`, `SSH_USER`, `SSH_KEY`)\n- [ ] Utiliser un `environment: test` dédié\n- [ ] Commenter le YAML de façon pertinente (livrable CdC §7.4.1)\n\n## Critères d'acceptation\n- [ ] Un push sur `main` déclenche le workflow complet\n- [ ] L'environnement de test sert la nouvelle version en cas de succès\n- [ ] Aucun déploiement n'a lieu si les tests échouent\n- [ ] Le statut est visible via le badge du README\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.a, CdC §7.3.1.e\n"
+  },
+  {
+    "title": "Workflow de déploiement en production déclenché manuellement",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLe déploiement en **production** ne doit être déclenchable que manuellement (CdC §7.3.1.b).\n\n## Tâches\n- [ ] Créer un workflow séparé déclenché par `workflow_dispatch` uniquement\n- [ ] Ajouter des paramètres d'entrée utiles (par ex. version ou tag à déployer)\n- [ ] Utiliser un `environment: production` avec règle de protection / approbation\n- [ ] Utiliser des secrets distincts de ceux de test (`SSH_HOST_PROD`, ...)\n- [ ] Vérifier qu'aucun `push` ni `schedule` ne peut déclencher ce workflow\n- [ ] Documenter la procédure de mise en production dans `docs/`\n\n## Critères d'acceptation\n- [ ] Le workflow n'apparaît que via « Run workflow » dans l'onglet Actions\n- [ ] Une approbation est requise avant déploiement\n- [ ] La production n'est jamais déployée automatiquement\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.b\n"
+  },
+  {
+    "title": "Audit des dépendances (audit npm) frontend et backend",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLes actions frontend et backend doivent inclure l'audit des packages pour éviter les vulnérabilités des dépendances (CdC §7.3.1.c.i).\n\n## Tâches\n- [ ] Ajouter une étape `npm audit --audit-level=high` (ou `npm audit --omit=dev` selon la politique choisie) pour `frontend/` et `backend/`\n- [ ] Échouer le job si une vulnérabilité haute ou critique subsiste\n- [ ] Corriger les vulnérabilités détectées (mise à jour des packages)\n- [ ] Indiquer explicitement ces corrections dans les messages de commit et dans le rapport (CdC §7.3.1.c)\n- [ ] Vérifier que `package-lock.json` est versionné pour un audit reproductible\n\n## Critères d'acceptation\n- [ ] Le job d'audit s'exécute pour le frontend et le backend\n- [ ] `npm audit` ne remonte plus de vulnérabilité haute/critique\n- [ ] Les corrections sont traçables dans l'historique Git\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.c.i\n"
+  },
+  {
+    "title": "Linting frontend et backend",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLes actions doivent inclure le linting pour éviter des erreurs potentielles de code (CdC §7.3.1.c.ii).\n\n## Constats actuels (vérifiés)\n- les deux `package.json` ont déjà `eslint` + `prettier` et un script `lint`\n- ⚠️ `lint` lance `eslint . --fix` : en CI, `--fix` **corrige au lieu d'échouer**, le job passerait toujours au vert\n- ⚠️ `--ignore-pattern .gitignore` est incorrect (il faut `--ignore-path .gitignore`)\n- `frontend/package.json` contient trois scripts redondants (`lint`, `lint2`, `lint-help`) : à nettoyer\n- aucun workflow CI n'existe encore\n\n## Tâches\n- [ ] Corriger les scripts : `lint` = `eslint . --ignore-path .gitignore` (sans `--fix`), et `lint:fix` = `eslint . --fix` pour le local\n- [ ] Supprimer les scripts redondants (`lint2`, `lint-help`)\n- [ ] Ajouter `--max-warnings=0` pour un lint strict en CI\n- [ ] Ajouter les étapes de lint dans le workflow, frontend et backend **en parallèle**\n- [ ] Corriger les erreurs / warnings existants\n- [ ] Mentionner les corrections de lint dans les commits et le rapport (§7.3.1.c)\n\n## Critères d'acceptation\n- [ ] `npm run lint` passe à zéro erreur dans les deux projets\n- [ ] Une erreur de lint fait échouer la CI (vérifiable en introduisant volontairement une erreur)\n- [ ] Le lint s'exécute en parallèle pour frontend et backend\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` §7.3.1.c.ii\n"
+  },
+  {
+    "title": "Tests E2E du frontend sur trois navigateurs",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLes tests du frontend doivent être exécutés sur **trois navigateurs différents** (CdC §7.3.1.c.iii).\n\n## Constats actuels (vérifiés)\n- Cypress est déjà configuré (`frontend/cypress.config.ts`) avec un `baseUrl` et `BACKEND_URL`\n- trois suites existent : `auth.cy.ts`, `todo.cy.ts`, `user.cy.ts`\n- ❌ `npm run e2e:run` impose `--browser chrome` : un seul navigateur, il en faut trois\n- ⚠️ des identifiants de test sont en dur dans `cypress.config.ts` (env `USER_PASSWORD`) : à déplacer vers des variables d'environnement / secrets\n- aucun workflow CI n'existe encore\n\n## Tâches\n- [ ] Remplacer `--browser chrome` par une matrice de jobs `[chrome, firefox, edge]` (ou electron/firefox/webkit selon le runner retenu)\n- [ ] Démarrer backend + base de données dans la CI avant les tests (`start-server-and-test` ou `services:`)\n- [ ] Rendre les identifiants de test injectables par variables d'environnement\n- [ ] Publier les captures d'écran et vidéos Cypress en artefacts en cas d'échec\n- [ ] Vérifier que les 3 suites passent sur les 3 navigateurs\n\n## Critères d'acceptation\n- [ ] Les trois navigateurs exécutent la suite avec succès\n- [ ] Un échec E2E bloque la CI et le déploiement\n- [ ] Les artefacts d'échec sont téléchargeables depuis le run\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` §7.3.1.c.iii\n"
+  },
+  {
+    "title": "Tests unitaires / d'intégration du backend",
+    "labels": [
+      "ci/cd",
+      "priorité: moyenne"
+    ],
+    "body": "## Contexte\nLes actions backend doivent inclure des tests (CdC §7.3.1.c.iii) et le CdC mentionne la couverture des tests unitaires du backend (§7.3.1.f.ii).\n\n## Constats actuels (vérifiés)\n- Jest + Supertest sont déjà installés (`backend/package.json`)\n- trois suites existent : `tests/auth.api.test.js`, `tests/todo.api.test.js`, `tests/user.api.test.js`\n- `npm run test:ci` = `jest --coverage --ci --silent` (couverture déjà produite)\n- ⚠️ `mongodb-memory-server` est présent dans les dépendances alors que la persistance du CdC est MySQL : à clarifier\n- ❌ ces tests ne sont branchés dans aucun workflow (aucun `.github/workflows`)\n\n## Tâches\n- [ ] Brancher `npm run test:ci` dans le workflow CI (job backend)\n- [ ] Publier le rapport de couverture (`coverage/lcov.info`) en artefact\n- [ ] Vérifier l'isolation de la base de test (MySQL de test ou mock, pas de dépendance à un service externe)\n- [ ] Clarifier / retirer `mongodb-memory-server` si non utilisé\n- [ ] Viser un seuil de couverture minimal et le documenter\n\n## Critères d'acceptation\n- [ ] `npm run test:ci` passe en local et en CI\n- [ ] Les routes principales de l'API sont couvertes\n- [ ] Un test en échec bloque le déploiement\n- [ ] Le rapport de couverture est récupérable depuis le run\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` §7.3.1.c.iii, §7.3.1.f.ii\n"
+  },
+  {
+    "title": "Optimisation du workflow : parallélisation et cache",
+    "labels": [
+      "ci/cd",
+      "priorité: moyenne"
+    ],
+    "body": "## Contexte\nLe workflow doit être optimisé : exécution de certaines tâches en parallèle et mise en cache pour réduire le temps de déploiement (CdC §7.3.1.d).\n\n## Tâches\n- [ ] Séparer les jobs `backend` et `frontend` pour qu'ils s'exécutent en parallèle\n- [ ] Activer le cache npm (`actions/setup-node` avec `cache: npm` ou `actions/cache` sur `~/.npm`)\n- [ ] Mettre en cache les navigateurs Playwright si les tests E2E en bénéficient\n- [ ] Éviter les installations et builds redondants entre jobs (artefacts partagés)\n- [ ] Mesurer la durée du workflow avant / après et consigner les chiffres\n\n## Critères d'acceptation\n- [ ] Les jobs frontend et backend tournent en parallèle\n- [ ] Le cache est effectivement réutilisé (visible dans les logs)\n- [ ] Gain de temps mesuré et documenté dans le rapport\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.d\n"
+  },
+  {
+    "title": "Déploiement sur serveur dédié (test et production)",
+    "labels": [
+      "ci/cd",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nLes déploiements de test et de production doivent être effectués sur un **serveur dédié** (CdC §7.3.1.e).\n\n## Tâches\n- [ ] Préparer l'instance Ubuntu accessible en SSH (utilisateur de déploiement, clé, pare-feu)\n- [ ] Installer les prérequis : Node.js, MySQL, reverse proxy (Nginx) ou Docker / Docker Compose\n- [ ] Créer deux environnements isolés : `test` et `production` (répertoires, ports, bases et variables d'environnement distincts)\n- [ ] Écrire la procédure de déploiement (SSH/rsync ou `docker compose pull/up`)\n- [ ] Vérifier le redémarrage automatique du service (systemd ou `restart: unless-stopped`)\n- [ ] Documenter l'infrastructure et les URLs dans `docs/`\n\n## Critères d'acceptation\n- [ ] L'application est joignable sur les deux environnements\n- [ ] Les données de production sont séparées de celles de test\n- [ ] La procédure de déploiement est reproductible et documentée\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.e\n"
+  },
+  {
+    "title": "Optionnel — Coverage E2E frontend avec rapport Codecov",
+    "labels": [
+      "ci/cd",
+      "optionnel",
+      "priorité: basse"
+    ],
+    "body": "## Contexte\nPoint optionnel : rapporter la couverture des tests E2E du frontend sur codecov.io (CdC §7.3.1.f.i).\n\n## Tâches\n- [ ] Activer la collecte de couverture dans la configuration des tests E2E\n- [ ] Ajouter l'upload vers Codecov (`codecov/codecov-action`) avec le token en secret\n- [ ] Publier le rapport accessible aux enseignants\n\n## Critères d'acceptation\n- [ ] Un rapport de couverture E2E frontend est visible sur Codecov après chaque run\n- [ ] L'upload ne casse pas la CI si Codecov est indisponible\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.f.i\n"
+  },
+  {
+    "title": "Optionnel — Coverage des tests unitaires backend avec rapport Codecov",
+    "labels": [
+      "ci/cd",
+      "optionnel",
+      "priorité: basse"
+    ],
+    "body": "## Contexte\nPoint optionnel : rapporter la couverture des tests unitaires du backend sur codecov.io (CdC §7.3.1.f.ii).\n\n## Tâches\n- [ ] Générer un rapport de couverture (`lcov` / `cobertura`) dans le job de tests backend\n- [ ] Ajouter l'upload vers Codecov avec le token en secret\n- [ ] Vérifier le seuil de couverture et son évolution\n\n## Critères d'acceptation\n- [ ] Un rapport de couverture backend est visible sur Codecov\n- [ ] La capture d'écran du rapport est prête pour le rapport PDF (CdC §7.4.3.g)\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.f.ii, CdC §7.4.3.g\n"
+  },
+  {
+    "title": "Optionnel — Badges de statut et de couverture dans le README",
+    "labels": [
+      "documentation",
+      "optionnel",
+      "priorité: basse"
+    ],
+    "body": "## Contexte\nPoint optionnel : ajouter au `README.md` les badges de statut GitHub Actions et le pourcentage de couverture Codecov (CdC §7.3.1.f.iii).\n\n## Tâches\n- [ ] Ajouter le badge de statut du workflow CI\n- [ ] Ajouter le badge Codecov (frontend et backend)\n- [ ] Ajouter un badge de version de la dernière release\n\n## Critères d'acceptation\n- [ ] Les badges s'affichent correctement sur la page du dépôt\n- [ ] Les badges reflètent l'état réel de `main`\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.f.iii\n"
+  },
+  {
+    "title": "Optionnel — Workflow de détection de conflits de fusion sur Pull Request",
+    "labels": [
+      "ci/cd",
+      "optionnel",
+      "priorité: basse"
+    ],
+    "body": "## Contexte\nPoint optionnel : un workflow qui s'exécute à l'ouverture ou à la mise à jour d'une Pull Request pour vérifier qu'elle peut être fusionnée sans conflit dans `main` (CdC §7.3.1.f.iv).\n\n## Tâches\n- [ ] Créer un workflow déclenché par `pull_request` (`opened`, `synchronize`, `reopened`)\n- [ ] Tester la fusion (`git merge-tree` ou merge de `main` dans la branche)\n- [ ] Publier le résultat en statut de check ou en commentaire de PR\n- [ ] Ajouter ce check comme requis dans la protection de `main`\n\n## Critères d'acceptation\n- [ ] Une PR en conflit est signalée automatiquement\n- [ ] Le check échoue explicitement en cas de conflit\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.f.iv\n"
+  },
+  {
+    "title": "Optionnel — Workflow d'assignation initiale des issues (triage)",
+    "labels": [
+      "ci/cd",
+      "optionnel",
+      "priorité: basse"
+    ],
+    "body": "## Contexte\nPoint optionnel : un workflow dédié à l'assignation initiale des issues à un utilisateur pour le triage (CdC §7.3.1.f.v).\n\n## Tâches\n- [ ] Créer un workflow déclenché par `issues` (`opened`)\n- [ ] Assigner automatiquement l'issue à un utilisateur de triage (via `gh issue edit --add-assignee` ou l'API)\n- [ ] Appliquer éventuellement un label de triage\n- [ ] Documenter le fonctionnement\n\n## Critères d'acceptation\n- [ ] Chaque nouvelle issue est assignée automatiquement\n- [ ] Le workflow ne s'exécute pas en boucle sur ses propres modifications\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.3.1.f.v\n"
+  },
+  {
+    "title": "Livrable — Release GitHub avec sources et workflows YAML commentés",
+    "labels": [
+      "livrable",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nUne release GitHub doit contenir le code source de l'application et les workflows GitHub Actions, avec des commentaires YAML pertinents pour la compréhension (CdC §7.4.1).\n\n## Tâches\n- [ ] Rédiger des commentaires utiles dans chaque workflow de `.github/workflows/`\n- [ ] Vérifier qu'aucun secret n'est présent dans les fichiers versionnés\n- [ ] Créer un tag de version (`v1.0.0`) sur `main`\n- [ ] Publier une release GitHub avec notes de version et archive source\n- [ ] Vérifier le contenu de l'archive générée\n\n## Critères d'acceptation\n- [ ] La release est publiée et téléchargeable\n- [ ] Les workflows inclus sont commentés et valides\n- [ ] Les notes de version décrivent les fonctionnalités et les corrections\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.4.1\n"
+  },
+  {
+    "title": "Livrable — Rapport PDF sur les spécificités CI/CD",
+    "labels": [
+      "documentation",
+      "livrable",
+      "priorité: haute"
+    ],
+    "body": "## Contexte\nUn rapport au format PDF doit décrire les spécificités CI/CD du projet (CdC §7.4.3).\n\n## Tâches\n- [ ] a. Introduction\n- [ ] b. Description de l'application : buts, technologies, fonctionnement, architecture\n- [ ] c. Actions nécessaires (linting, audit, test, build, run) pour backend et frontend, avec les spécificités dev / production\n- [ ] d. Description de toutes les étapes des workflows CI/CD backend et frontend\n- [ ] e. Schéma initial du workflow complet (diagramme draw.io) avec conditions et dépendances\n- [ ] f. Rapport de déploiement : statut et conclusion\n- [ ] g. Rapport de couverture CI backend et frontend (captures d'écran) avec explications et statuts\n- [ ] h. Capture d'écran du schéma CI/CD GitHub Actions mis en place\n- [ ] i. Chapitre explicatif de l'usage fait de l'IA dans le projet\n- [ ] j. Conclusion\n- [ ] Exporter le document en PDF et le déposer dans le dépôt (ou selon la modalité de rendu)\n\n## Critères d'acceptation\n- [ ] Les dix points a–j sont traités\n- [ ] Les captures et schémas sont lisibles\n- [ ] Le PDF correspond à l'état final du dépôt\n\n## Références\n- `DOC/CdC-Todo-App-324.pdf` CdC §7.4.3\n"
+  }
+]
