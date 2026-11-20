@@ -1,22 +1,69 @@
-# Workflow bidon — squelette de la CI.
-# Volontairement déclenché à la main pour ne pas afficher une CI verte trompeuse.
-# À remplacer par le vrai pipeline : voir Doc/schema-workflow-v1.md et AGENTS.md §8.
+# CI — v1 : étape lint uniquement (backend + frontend en parallèle).
+# Références : issue #8, AGENTS.md §8, Doc/schema-workflow-v1.md.
+# Les autres étapes (typecheck, tests, build, e2e, image Docker) seront ajoutées ensuite.
 
-name: CI (placeholder)
+name: CI
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_dispatch:
+
+# Annule les runs obsolètes quand on repousse sur la même branche/PR.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  placeholder:
-    name: Placeholder
+  lint-backend:
+    name: Lint backend
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Vérifier que le workflow tourne
-        run: echo "Workflow bidon OK"
+      - name: Node 20 + cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      # On n'utilise pas `npm run lint` : le script local fait --fix et corrigerait
+      # les erreurs en silence au lieu de faire échouer la CI.
+      - name: ESLint (0 erreur, 0 warning)
+        run: npx eslint . --max-warnings=0
+
+  lint-frontend:
+    name: Lint frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20 + cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      # Même règle que côté backend : pas de --fix, et le moindre warning casse le job.
+      - name: ESLint (0 erreur, 0 warning)
+        run: npx eslint . --max-warnings=0
