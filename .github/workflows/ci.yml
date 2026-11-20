@@ -1,0 +1,22 @@
+# Workflow bidon — squelette de la CI.
+# Volontairement déclenché à la main pour ne pas afficher une CI verte trompeuse.
+# À remplacer par le vrai pipeline : voir Doc/schema-workflow-v1.md et AGENTS.md §8.
+
+name: CI (placeholder)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  placeholder:
+    name: Placeholder
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Vérifier que le workflow tourne
+        run: echo "Workflow bidon OK"
