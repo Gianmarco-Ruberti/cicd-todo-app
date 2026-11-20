@@ -88,7 +88,13 @@ jobs:
       # Pas `npm run lint` : le script local fait --fix et masquerait les erreurs.
       - name: ESLint backend (0 erreur, 0 warning)
         working-directory: backend
-        run: npx eslint . --max-warnings=0
+        run: npx eslint . --max-warnings=
+      
+      - name: Tests Unitaires (DEV) Backend
+        working-directory: Backend
+        run: npm run test:dev
+
+      
 
   # 2b. Frontend : même chose, en parallèle du backend.
   Front:
