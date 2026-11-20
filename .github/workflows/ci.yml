@@ -67,3 +67,23 @@ jobs:
       # Même règle que côté backend : pas de --fix, et le moindre warning casse le job.
       - name: ESLint (0 erreur, 0 warning)
         run: npx eslint . --max-warnings=0
+
+  audit-backend:
+    name: audit backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: backend
+ 
+  audit-frontend:
+    name: audit frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm audit --omit=dev --audit-level=high
+        working-directory: frontend
