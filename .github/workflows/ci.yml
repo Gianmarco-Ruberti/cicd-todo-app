@@ -1,4 +1,5 @@
-# CI — v1 : install commun, puis audit et lint (backend + frontend).
+# CI — v1 : install commun, puis un job par dossier (backend / frontend).
+# Chaque job lance audit PUIS lint sur son dossier, et les deux tournent en parallèle.
 # Références : Doc/schema-workflow-v2.md, issues #7 et #8, AGENTS.md §8.
 # Les étapes suivantes (tests, build, e2e) seront ajoutées plus tard.
 
@@ -19,8 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  # 1. Installation commune : les jobs audit et lint réutilisent ces node_modules
-  #    au lieu de relancer `npm ci` chacun de leur côté.
+  # 1. Installation commune : les jobs backend et frontend réutilisent ces
+  #    node_modules au lieu de relancer `npm ci` chacun de leur côté.
   install:
     name: Install
     runs-on: ubuntu-latest
@@ -55,34 +56,11 @@ jobs:
             frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
 
-  # 2a. Audit des dépendances (issue #7).
-  # ⚠️ Rouge aujourd'hui : des vulnérabilités high/critical existent déjà dans
-  # les deux projets, à corriger dans le cadre de l'issue #7.
-  audit:
-    name: Audit
-    needs: install
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Node 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      # npm audit ne lit que le lockfile : pas besoin des node_modules ici.
-      - name: Audit backend
-        working-directory: backend
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Audit frontend
-        working-directory: frontend
-        run: npm audit --omit=dev --audit-level=high
-
-  # 2b. Lint strict (issue #8), en parallèle de l'audit.
-  lint:
-    name: Lint
+  # 2a. Backend : audit des dépendances (issue #7) puis lint strict (issue #8).
+  # ⚠️ Rouge aujourd'hui : des vulnérabilités high/critical existent déjà,
+  # à corriger dans le cadre de l'issue #7.
+  Back:
+    name: Backend
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -103,10 +81,41 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
           fail-on-cache-miss: true
 
+      - name: Audit backend
+        working-directory: backend
+        run: npm audit --omit=dev --audit-level=high
+
       # Pas `npm run lint` : le script local fait --fix et masquerait les erreurs.
       - name: ESLint backend (0 erreur, 0 warning)
         working-directory: backend
         run: npx eslint . --max-warnings=0
+
+  # 2b. Frontend : même chose, en parallèle du backend.
+  Front:
+    name: Frontend
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Récupérer les node_modules installés
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            backend/node_modules
+            frontend/node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
+          fail-on-cache-miss: true
+
+      - name: Audit frontend
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
 
       - name: ESLint frontend (0 erreur, 0 warning)
         working-directory: frontend
