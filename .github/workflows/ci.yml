@@ -88,13 +88,24 @@ jobs:
       # Pas `npm run lint` : le script local fait --fix et masquerait les erreurs.
       - name: ESLint backend (0 erreur, 0 warning)
         working-directory: backend
-        run: npx eslint . --max-warnings=
-      
-      - name: Tests Unitaires (DEV) Backend
-        working-directory: Backend
-        run: npm run test:dev
+        run: npx eslint . --max-warnings=0
 
-      
+      # Pré-requis des tests (AGENTS.md §8.1) : `.env` doit exister et la clé
+      # privée JWT n'est pas versionnée.
+      - name: Créer le .env de test
+        working-directory: backend
+        run: printf 'NODE_ENV=test\n' > .env
+
+      - name: Générer la paire de clés JWT
+        working-directory: backend
+        run: |
+          mkdir -p config/keys
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out config/keys/jwtRS256.key
+          openssl rsa -pubout -in config/keys/jwtRS256.key -out config/keys/jwtRS256.key.pub
+
+      - name: Tests backend (couverture, SQLite en mémoire)
+        working-directory: backend
+        run: npm run test:ci
 
   # 2b. Frontend : même chose, en parallèle du backend.
   Front:
