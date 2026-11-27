@@ -16,7 +16,7 @@ const UserController = {
       password: await bcrypt.hash(password, 8)
     })
       .then((result) => {
-        return res.status(201).json({ user: cleanUser(result) });
+        return res.status(201).json(cleanUser(result));
       })
       .catch((error) => {
         console.error('ADD USER: ', error);
@@ -37,9 +37,9 @@ const UserController = {
     })
       .then((result) => {
         if (result) {
-          return res.status(200).json({ user: result });
+          return res.status(200).json(result);
         } else {
-          return res.status(404);
+          return res.status(404).json({ message: 'Utilisateur introuvable !' });
         }
       })
       .catch((error) => {
@@ -62,14 +62,14 @@ const UserController = {
       await user
         .save()
         .then((result) => {
-          return res.status(200).json({ user: cleanUser(result) });
+          return res.status(200).json(cleanUser(result));
         })
         .catch((error) => {
           console.error('UPDATE USER: ', error);
-          return res.status(500);
+          return res.status(500).json({ message: "Erreur lors de la mise à jour !" });
         });
     } else {
-      return res.status(404);
+      return res.status(404).json({ message: 'Utilisateur introuvable !' });
     }
   },
   deleteCurrentUser: (req, res) => {
