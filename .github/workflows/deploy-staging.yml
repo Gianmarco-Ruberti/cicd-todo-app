@@ -106,8 +106,8 @@ jobs:
       - name: Copier le frontend
         run: rsync -az --delete frontend/dist/ "vm:$TARGET/frontend/"
 
-      # `config/keys/` est exclu : les clés JWT générées sur la VM ne doivent pas
-      # être effacées par --delete, ni écrasées par une clé locale.
+      # Seules les clés JWT sont exclues (générées sur la VM) : le dossier
+      # `config/keys/` doit être copié, sinon `require('../config/keys')` échoue.
       - name: Copier le backend
         run: |
           rsync -az --delete \
@@ -115,7 +115,8 @@ jobs:
             --exclude coverage/ \
             --exclude tests/ \
             --exclude .env \
-            --exclude config/keys/ \
+            --exclude config/keys/jwtRS256.key \
+            --exclude config/keys/jwtRS256.key.pub \
             backend/ "vm:$TARGET/backend/"
 
       - name: Installer les dépendances et recharger PM2
