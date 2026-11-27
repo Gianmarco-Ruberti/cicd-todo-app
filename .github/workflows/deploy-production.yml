@@ -1,0 +1,273 @@
+# CD — mise en production MANUELLE (issue #6).
+#
+# Ce workflow n'a qu'un seul déclencheur : `workflow_dispatch`, c'est-à-dire le
+# bouton « Run workflow » de l'onglet Actions. Aucun `push`, `pull_request`,
+# `schedule` ni `workflow_run` n'y figure : la production ne peut pas partir
+# toute seule, même si la CI de main est verte.
+#
+# Déroulé :
+#   guard (confirmation saisie) ─ verify (lint + tests + build du ref choisi) ─ deploy
+#
+#   - `guard`    : refuse de continuer si la confirmation n'est pas « DEPLOY ».
+#   - `verify`   : rejoue lint + tests + build sur le tag/branche/SHA déployé,
+#                  puis publie le bundle. Aucune version non testée ne part.
+#   - `deploy`   : environment `production` (approbation possible via les règles
+#                  de protection), copie sur la VM, recharge PM2, vérifie le site.
+#
+# Secrets du dépôt (distincts de ceux de test) :
+#   SSH_KEY_PROD, TS_OAUTH_CLIENT_ID_PROD, TS_OAUTH_SECRET_PROD
+# Variables (facultatives) : PROD_HOST, TS_TAG_PROD, SSH_KNOWN_HOSTS_PROD, PROD_URL
+#   → les valeurs par défaut sont publiques ; une variable du dépôt, si elle
+#     existe, prend le dessus.
+#
+# Cible sur la VM m324-vm-d :
+#   /var/www/todo/production/{frontend,backend} — nginx :80 → backend :3000
+#   /etc/todo/production.env (base todo_production) — hors dépôt
+#
+# Procédure détaillée : Doc/procedure-mise-en-production.md
+
+name: Déploiement production
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Tag, branche ou SHA à déployer (ex. v1.0.0, main, 644b58f)'
+        required: true
+        default: main
+        type: string
+      confirmation:
+        description: 'Tapez DEPLOY pour confirmer la mise en production'
+        required: true
+        type: string
+
+# Deux mises en production simultanées produiraient un mélange de fichiers :
+# on les sérialise au lieu de les annuler.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROD_HOST: ${{ vars.PROD_HOST || 'm324-vm-d' }}
+  TS_TAG: ${{ vars.TS_TAG_PROD || 'tag:ci-d' }}
+  SSH_KNOWN_HOSTS: ${{ vars.SSH_KNOWN_HOSTS_PROD || 'm324-vm-d,10.198.2.14 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEpkY62GKRGLHqUM+SnLi47KKfNc9akULXXvFWo/vu9i' }}
+  PROD_URL: ${{ vars.PROD_URL || 'https://m324-vm-d.tailefea5d.ts.net' }}
+  TARGET: /var/www/todo/production
+
+jobs:
+  # 0. Garde-fou : une mise en production exige une saisie explicite, pour
+  #    éviter un clic malheureux dans la liste des runs.
+  guard:
+    name: Confirmation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier la confirmation et le ref
+        run: |
+          if [ "${{ inputs.confirmation }}" != "DEPLOY" ]; then
+            echo "::error::Confirmation invalide : tapez exactement DEPLOY pour lancer la mise en production."
+            exit 1
+          fi
+          echo "Déploiement confirmé par @${{ github.actor }} — ref : ${{ inputs.ref }}"
+
+  # 1. Aucune version non testée ne part en production : lint + tests + build
+  #    sont rejoués sur le ref exact qui sera déployé.
+  verify:
+    name: Vérifications du ref
+    needs: guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du ref demandé
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Installer le backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Installer le frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: ESLint backend (0 erreur, 0 warning)
+        working-directory: backend
+        run: npx eslint . --max-warnings=0
+
+      - name: ESLint frontend (0 erreur, 0 warning)
+        working-directory: frontend
+        run: npx eslint . --max-warnings=0
+
+      # Pré-requis des tests (AGENTS.md §8.1) : `.env` de test et clés JWT,
+      # qui ne sont pas versionnés.
+      - name: Préparer l'environnement de test
+        working-directory: backend
+        run: |
+          printf 'NODE_ENV=test\n' > .env
+          mkdir -p config/keys
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out config/keys/jwtRS256.key
+          openssl rsa -pubout -in config/keys/jwtRS256.key -out config/keys/jwtRS256.key.pub
+
+      - name: Tests backend (SQLite en mémoire)
+        working-directory: backend
+        run: npm run test:ci
+
+      - name: Vite build
+        working-directory: frontend
+        run: npm run build-only
+
+      - name: Publier le bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-production
+          path: frontend/dist
+          retention-days: 1
+
+  # 2. Mise en production. `environment: production` permet d'exiger une
+  #    approbation manuelle avant l'exécution de ce job (Settings → Environments
+  #    → production → Required reviewers).
+  deploy:
+    name: Déploiement production
+    needs: verify
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://m324-vm-d.tailefea5d.ts.net
+    timeout-minutes: 15
+    steps:
+      - name: Checkout du ref demandé
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Récupérer le bundle construit par la vérification
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist-production
+          path: frontend/dist
+
+      - name: Rappeler la cible du déploiement
+        run: |
+          echo "Ref déployé : ${{ inputs.ref }} ($(git rev-parse --short HEAD))"
+          echo "VM : $PROD_HOST (tag Tailscale $TS_TAG)"
+          echo "Dossier : $TARGET"
+          echo "Adresse publique : $PROD_URL"
+
+      - name: Rejoindre le tailnet
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID_PROD }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET_PROD }}
+          tags: ${{ env.TS_TAG }}
+
+      - name: Configurer SSH
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY_PROD }}
+        run: |
+          PROD_IP=$(sudo tailscale ip -4 "$PROD_HOST")
+          echo "Adresse Tailscale de $PROD_HOST : $PROD_IP"
+
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+          printf '%s\n' \
+            'Host vm' \
+            "    HostName $PROD_IP" \
+            "    HostKeyAlias $PROD_HOST" \
+            '    User deploy' \
+            '    IdentityFile ~/.ssh/id_ed25519' \
+            '    IdentitiesOnly yes' \
+            '    StrictHostKeyChecking yes' \
+            '    ConnectTimeout 15' > ~/.ssh/config
+          chmod 600 ~/.ssh/config
+
+          ssh vm 'echo "Connecté à $(hostname) en tant que $(whoami)"'
+
+      - name: Copier le frontend
+        run: rsync -az --delete frontend/dist/ "vm:$TARGET/frontend/"
+
+      # Comme pour le test : seules les clés JWT sont exclues, le dossier
+      # `config/keys/` doit être copié pour que `require('../config/keys')` marche.
+      - name: Copier le backend
+        run: |
+          rsync -az --delete \
+            --exclude node_modules/ \
+            --exclude coverage/ \
+            --exclude tests/ \
+            --exclude .env \
+            --exclude config/keys/jwtRS256.key \
+            --exclude config/keys/jwtRS256.key.pub \
+            backend/ "vm:$TARGET/backend/"
+
+      - name: Installer les dépendances et recharger PM2
+        run: |
+          ssh vm "TARGET=$TARGET bash -s" <<'EOF'
+          set -e
+          cd "$TARGET/backend"
+
+          # La clé JWT n'est pas versionnée (AGENTS.md §8.1) : générée une seule
+          # fois sur la VM, elle est conservée d'un déploiement à l'autre.
+          if [ ! -f config/keys/jwtRS256.key ]; then
+            mkdir -p config/keys
+            openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out config/keys/jwtRS256.key
+            openssl rsa -pubout -in config/keys/jwtRS256.key -out config/keys/jwtRS256.key.pub
+          fi
+
+          npm ci --omit=dev
+          DEPLOY_ENV=production pm2 startOrReload ecosystem.config.js
+          pm2 save
+          EOF
+
+      # nginx :80 sert le frontend de production et relaie /api vers :3000.
+      # Le runner n'a accès qu'au port 22, les tests HTTP passent donc par la VM.
+      - name: Vérifier la production sur la VM
+        run: |
+          ssh vm bash -s <<'EOF'
+          for i in $(seq 1 10); do
+            front=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:80/)
+            api=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:80/api/todo)
+            if [ "$front" = "200" ] && { [ "$api" = "401" ] || [ "$api" = "200" ]; }; then
+              echo "Production en ligne — frontend : $front, API : $api"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "La production ne répond pas — frontend : $front, API : $api"
+          echo "--- pm2 status ---"
+          pm2 status || true
+          echo "--- 30 dernières lignes de logs ---"
+          pm2 logs todo-production --nostream --lines 30 || true
+          exit 1
+          EOF
+
+      - name: Quitter le tailnet
+        if: always()
+        run: sudo tailscale logout || true
+
+      - name: Vérifier l'adresse publique
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$PROD_URL/"
+          echo "Adresse publique joignable : $PROD_URL"
+
+      - name: Résumé
+        run: |
+          {
+            echo "### Production déployée"
+            echo "- Ref : \`${{ inputs.ref }}\` (\`${GITHUB_SHA::7}\`)"
+            echo "- Déclenché par : @${{ github.actor }}"
+            echo "- VM : \`$PROD_HOST\`"
+            echo "- Adresse : $PROD_URL"
+          } >> "$GITHUB_STEP_SUMMARY"
