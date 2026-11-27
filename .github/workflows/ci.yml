@@ -292,7 +292,7 @@ jobs:
           fi
 
           npm ci --omit=dev
-          pm2 startOrReload ecosystem.config.js
+          DEPLOY_ENV=staging pm2 startOrReload ecosystem.config.js
           pm2 save
           EOF
 
