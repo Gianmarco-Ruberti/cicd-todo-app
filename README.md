@@ -1,5 +1,8 @@
 # todo-app
 
+[![CI](https://github.com/Gianmarco-Ruberti/cicd-todo-app/actions/workflows/ci.yml/badge.svg)](https://github.com/Gianmarco-Ruberti/cicd-todo-app/actions/workflows/ci.yml)
+[![Déploiement test](https://img.shields.io/badge/d%C3%A9ploiement-test-2ea44f)](https://m324-vm-d.tailefea5d.ts.net:8443)
+
 This simple Todo app use in frontend responsive made with Vue3 using TypeScript and 
 TailWinCSS for the HTML view.
 
