@@ -1,27 +1,34 @@
-# CI — v1 : install commun, puis un job par dossier (backend / frontend).
-# Chaque job lance audit PUIS lint sur son dossier, et les deux tournent en parallèle.
-# Références : Doc/schema-workflow-v2.md, issues #7 et #8, AGENTS.md §8.
-# Les étapes suivantes (tests, build, e2e) seront ajoutées plus tard.
-
 name: CI
 
 on:
+  # `main` est protégée : c'est là qu'atterrissent les merges, donc on vérifie
+  # aussi après merge (une PR peut passer verte puis casser sur main).
   push:
     branches: [main]
+  # Toutes les branches, sans filtre : une PR doit être vérifiée quelle que soit
+  # sa branche source (feat/*, fix/*, ci/*...).
   pull_request:
+  # Lancement manuel depuis l'onglet Actions, utile pour rejouer un run rouge
+  # sans pousser de commit vide.
   workflow_dispatch:
 
-# Annule les runs obsolètes quand on repousse sur la même branche/PR.
+# Annule les runs obsolètes quand on repousse sur la même branche/PR :
+# Le groupe inclut le nom du workflow pour éviter qu'un futur cd.yml annule les runs de la CI.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Principe du moindre privilège : la CI lit le repo, elle n'écrit nulle part.
 permissions:
   contents: read
 
 jobs:
-  # 1. Installation commune : les jobs backend et frontend réutilisent ces
-  #    node_modules au lieu de relancer `npm ci` chacun de leur côté.
+  # ---------------------------------------------------------------------------
+  # 1. Installation commune
+  #
+  # On l'exécute une seule fois, puis backend et frontend récupèrent les node_modules 
+  # depuis le cache au lieu de réinstaller.
+  # ---------------------------------------------------------------------------
   install:
     name: Install
     runs-on: ubuntu-latest
@@ -29,6 +36,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # `cache: npm` de setup-node ne met en cache que le cache npm (~/.npm) :
+      # il accélère `npm ci` mais ne dispense pas de le relancer.
+      # Les deux lockfiles sont déclarés : si un seul change, le cache npm est
+      # considéré comme obsolète (pas de dépendance fantôme installée).
       - name: Node 20 + cache npm
         uses: actions/setup-node@v4
         with:
@@ -38,6 +49,9 @@ jobs:
             backend/package-lock.json
             frontend/package-lock.json
 
+      # `npm ci` (et pas `npm install`) : installation déterministe, strictement
+      # conforme au lockfile, et échoue si package.json et le lock sont
+      # désynchronisés. C'est exactement le comportement qu'on veut en CI.
       - name: Installer le backend
         working-directory: backend
         run: npm ci
@@ -48,6 +62,8 @@ jobs:
 
       # Chaque job tourne sur un runner neuf : on repasse les node_modules
       # via le cache, avec une clé basée sur les deux lockfiles.
+      # La clé change dès qu'une dépendance change -> jamais de node_modules
+      # périmés réutilisés silencieusement.
       - name: Mettre les node_modules en cache
         uses: actions/cache@v4
         with:
@@ -56,9 +72,10 @@ jobs:
             frontend/node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
 
-  # 2a. Backend : audit des dépendances (issue #7) puis lint strict (issue #8).
-  # ⚠️ Rouge aujourd'hui : des vulnérabilités high/critical existent déjà,
-  # à corriger dans le cadre de l'issue #7.
+  # ---------------------------------------------------------------------------
+  # 2a. Backend : audit des dépendances, lint strict,
+  # puis tests Jest sur SQLite en mémoire.
+  # ---------------------------------------------------------------------------
   Back:
     name: Backend
     needs: install
@@ -67,11 +84,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # le cache npm ne sert à rien, on n'installe rien,
+      # on restaure directement les node_modules du job install.
       - name: Node 20
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
+      # `fail-on-cache-miss: true` est volontaire : si la clé ne correspond pas
+      # (cache purgé, lockfile modifié entre-temps), on préfère un échec net à
+      # un `npx eslint` qui téléchargerait une version arbitraire d'ESLint et
+      # validerait le code avec une config qui n'est pas celle du projet.
       - name: Récupérer les node_modules installés
         uses: actions/cache/restore@v4
         with:
@@ -81,21 +104,32 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
           fail-on-cache-miss: true
 
+      # Audit en premier : quelques secondes, et une CVE critique doit arrêter
+      # le pipeline avant de consommer du temps de lint/test.
+      # `--omit=dev` : seules les dépendances de prod partent en production ;
+      # une faille dans un outil de dev ne se déploie pas.
+      # `--audit-level=high` : low/moderate sont tolérées, high et critical bloquent.
       - name: Audit backend
         working-directory: backend
         run: npm audit --omit=dev --audit-level=high
 
       # Pas `npm run lint` : le script local fait --fix et masquerait les erreurs.
+      # `--max-warnings=0` : en CI un warning vaut une erreur, sinon il s'accumule
+      # et personne ne le regarde jamais.
       - name: ESLint backend (0 erreur, 0 warning)
         working-directory: backend
         run: npx eslint . --max-warnings=0
 
-      # Pré-requis des tests (AGENTS.md §8.1) : `.env` doit exister et la clé
-      # privée JWT n'est pas versionnée.
+      # Pré-requis des tests: app.js fait loadEnvFile('./.env')
+      # et jette ENOENT si le fichier est absent, même en mode test.
+      # `NODE_ENV=test` bascule Sequelize sur SQLite :memory: -> aucun service
+      # externe à démarrer, tests rapides et déterministes.
       - name: Créer le .env de test
         working-directory: backend
         run: printf 'NODE_ENV=test\n' > .env
 
+      # La clé privée JWT est gitignorée (*.key) : sans elle, config/keys plante
+      # au require. On régénère une paire jetable, propre à ce run.
       - name: Générer la paire de clés JWT
         working-directory: backend
         run: |
@@ -103,11 +137,16 @@ jobs:
           openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out config/keys/jwtRS256.key
           openssl rsa -pubout -in config/keys/jwtRS256.key -out config/keys/jwtRS256.key.pub
 
+      # `test:ci` = jest --coverage --ci --silent : pas de watch, pas de snapshot
+      # créé à la volée (--ci), sortie nettoyée. La couverture sort en cobertura
+      # dans backend/coverage/, exploitable comme preuve chiffrée dans le rapport.
       - name: Tests backend (couverture, SQLite en mémoire)
         working-directory: backend
         run: npm run test:ci
 
-  # 2b. Frontend : même chose, en parallèle du backend.
+  # ---------------------------------------------------------------------------
+  # 2b. Frontend : mêmes principes que le backend, en parallèle de lui.
+  # ---------------------------------------------------------------------------
   Front:
     name: Frontend
     needs: install
@@ -121,6 +160,8 @@ jobs:
         with:
           node-version: 20
 
+      # Même clé que le job install, donc même contenu exact une seule entrée de cache pour les deux dossiers,
+      #  plus simple à gérer qu'un cache par projet.
       - name: Récupérer les node_modules installés
         uses: actions/cache/restore@v4
         with:
@@ -130,10 +171,14 @@ jobs:
           key: node-modules-${{ runner.os }}-${{ hashFiles('backend/package-lock.json', 'frontend/package-lock.json') }}
           fail-on-cache-miss: true
 
+      # Le build n'embarque pas les devDependencies : seule la surface exposée
+      # en production est auditée, comme côté backend.
       - name: Audit frontend
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
 
+      # `npx eslint` directement (pas `npm run lint`, qui fait --fix) : on
+      # détecte au lieu de corriger en silence sur le runner.
       - name: ESLint frontend (0 erreur, 0 warning)
         working-directory: frontend
         run: npx eslint . --max-warnings=0
