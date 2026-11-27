@@ -152,6 +152,10 @@ jobs:
             sleep 2
           done
           echo "Le staging ne répond pas — frontend : $front, API : $api"
+          echo "--- pm2 status ---"
+          pm2 status || true
+          echo "--- 30 dernières lignes de logs ---"
+          pm2 logs todo-staging --nostream --lines 30 || true
           exit 1
           EOF
 
