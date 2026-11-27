@@ -39,3 +39,6 @@ coverage/
 # Cypress (tests E2E)
 cypress/videos/
 cypress/screenshots/
+
+# Archive de livraison extraite (contient des secrets, non versionnée)
+m324-groupe-d/
