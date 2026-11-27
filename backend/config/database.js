@@ -2,6 +2,20 @@ const { Sequelize } = require('sequelize');
 
 const isTest = process.env.NODE_ENV === 'test';
 
+// Sur la VM, les identifiants arrivent séparément (/etc/todo/staging.env) ;
+// en local, on peut fournir directement une URL complète via DB_URL.
+function getDbUrl() {
+  if (process.env.DB_URL) return process.env.DB_URL;
+
+  const { DB_HOST, DB_USER, DB_PASSWORD, DB_NAME } = process.env;
+  if (DB_HOST && DB_USER && DB_NAME) {
+    const password = DB_PASSWORD ? `:${encodeURIComponent(DB_PASSWORD)}` : '';
+    return `mysql://${encodeURIComponent(DB_USER)}${password}@${DB_HOST}/${DB_NAME}`;
+  }
+
+  return undefined;
+}
+
 let sequelize;
 if (isTest) {
   // Fast, zero-setup DB for tests
@@ -11,10 +25,11 @@ if (isTest) {
     logging: false
   });
 } else {
-  if (!process.env.DB_URL) {
-    throw new Error('Missing DB_URL environment variable');
+  const dbUrl = getDbUrl();
+  if (!dbUrl) {
+    throw new Error('Missing DB_URL environment variable (ou DB_HOST / DB_USER / DB_NAME)');
   }
-  sequelize = new Sequelize(process.env.DB_URL, {
+  sequelize = new Sequelize(dbUrl, {
     dialect: 'mysql', // Assurez-vous que le dialecte est correct
     logging: false,
     pool: {

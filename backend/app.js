@@ -1,10 +1,16 @@
 // app.js
 const express = require('express');
+const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 
-// Load env vars
-process.loadEnvFile('./.env');
+// Load env vars : fichier .env local s'il existe. Sur le serveur, PM2 fournit les
+// variables (/etc/todo/staging.env) : l'absence de .env ne doit pas faire planter l'app.
+try {
+  process.loadEnvFile('./.env');
+} catch {
+  // Pas de .env : on garde l'environnement du processus.
+}
 
 const { sequelize: db } = require('./config/database');
 const { initModels } = require('./models');
@@ -12,6 +18,8 @@ const router = require('./routes');
 
 const PORT = process.env.PORT || '3000';
 const ENV = process.env.NODE_ENV || 'development';
+// Fichiers statiques : le bundle Vite en local, le dossier servi par nginx sur le serveur.
+const DIST_DIR = process.env.STATIC_DIR || path.join(__dirname, '../dist');
 
 let app; // singleton Express app
 let server; // http.Server
@@ -22,7 +30,7 @@ function createApp() {
   app = express();
 
   // Serve frontend static files (useful in dev/prod, skipped in tests if you want)
-  app.use(express.static(path.join(__dirname, '../dist')));
+  app.use(express.static(DIST_DIR));
 
   app.use(express.json());
   app.use(cookieParser());
@@ -36,9 +44,11 @@ function createApp() {
     app.use('/test', testApi);
   }
 
-  // Fallback to SPA index
+  // Fallback to SPA index (s'il est présent : sur le serveur, c'est nginx qui sert le front)
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
+    const indexFile = path.join(DIST_DIR, 'index.html');
+    if (fs.existsSync(indexFile)) return res.sendFile(indexFile);
+    return res.status(404).json({ message: 'Introuvable' });
   });
 
   return app;
